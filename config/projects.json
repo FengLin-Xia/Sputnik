@@ -1,0 +1,7 @@
+{
+  "projects": [
+    { "id": "sputnik", "label": "Sputnik", "x": 0.78, "y": 0.22 },
+    { "id": "itclicks", "label": "ItClicks", "x": 0.18, "y": 0.64 },
+    { "id": "driftprobe", "label": "DriftProbe", "x": 0.84, "y": 0.71 }
+  ]
+}

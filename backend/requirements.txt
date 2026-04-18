@@ -1,0 +1,2 @@
+# Sputnik backend (venv: python -m venv backend/.venv)
+numpy>=1.24,<3

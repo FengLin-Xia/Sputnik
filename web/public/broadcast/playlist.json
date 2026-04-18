@@ -1,0 +1,10 @@
+{
+  "segments": [
+    {
+      "id": "segment_001",
+      "audio": "audio/segment_001.wav",
+      "score": "score.json",
+      "startOffset": 0.0
+    }
+  ]
+}

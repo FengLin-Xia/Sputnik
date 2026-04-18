@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rain Xia — Across the Universe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="receiver">
+      <div class="receiver__top">
+        <h1 class="receiver__title">
+          Rain Xia<br />
+          <span class="receiver__title-sub">— Across the Universe</span>
+        </h1>
+        <header class="receiver__status" aria-live="polite">
+          <p class="receiver__line receiver__line--primary">
+            <span class="receiver__label">transmitting since launch</span>
+            <span id="since-launch" class="receiver__value">000d 00h 00m 00s</span>
+          </p>
+          <p class="receiver__line receiver__line--secondary">
+            <span class="receiver__label">orbit day</span>
+            <span id="orbit-day" class="receiver__value">000</span>
+          </p>
+          <p class="receiver__line receiver__line--tertiary">
+            <span class="receiver__meta receiver__lyric">Nothing's gonna change my world</span>
+          </p>
+        </header>
+      </div>
+
+      <main class="receiver__sky">
+        <canvas id="starfield" class="receiver__canvas" aria-label="Broadcast pixel starfield"></canvas>
+        <div id="project-hover-label" class="project-hover-label" role="tooltip" hidden></div>
+        <div class="receiver__bottom">
+          <footer class="receiver__say">
+            <div class="say-card">
+              <div class="say-card__inner">
+                <input
+                  type="text"
+                  id="say-anything-input"
+                  class="say-card__input"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="Say anything"
+                  aria-label="Say anything"
+                />
+              </div>
+            </div>
+            <p id="transmit-echo" class="receiver__echo say-card__echo" hidden aria-live="polite"></p>
+          </footer>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

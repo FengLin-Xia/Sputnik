@@ -1,0 +1,113 @@
+Sputnik 改动记录 — 2026-04-18
+===============================
+
+一、仓库与主架构（对齐 Sputnik_主架构与前端PR规划.md）
+-------------------------------------------------
+- pipeline/：seed、drift、composition、render、broadcast_package 分层占位（Python 包说明）。
+- broadcast/latest/：每日广播包样例（meta、state、score、playlist、fragments、audio/）；broadcast/archive/ 占位。
+- config/projects.json：项目恒星坐标（与广播包分离）。
+- web/：静态接收端（Vite + TypeScript）。
+- .github/workflows/pages.yml：构建 web 并部署 GitHub Pages（VITE_BASE=/Sputnik/ 需与仓库名一致）。
+- web/public/.nojekyll、CNAME.example；根目录 .gitignore。
+
+二、前端 Receiver（对齐 Reciever_Visual_mock_v01.md）
+----------------------------------------------------
+- 平面像素星空（非极坐标图）：mapNotes.ts 中 mapNotesToStarPositions — track 分带、时间流动、音高 + 抖动。
+- 三层：背景噪点（略压暗以免抢戏）、广播音符星、项目恒星；mock 时钟推进点亮与余辉（glow[]）。
+- 静态数据：web/public/broadcast/*.json、web/public/config/projects.json（与仓库根 broadcast/latest、config 同步）；main 请求 broadcast/state.json、score.json、meta.json、config/projects.json。
+- main.ts：launch 计时；项目星 hover 标签、点击 console.info；发报框占位交互。
+- index.html：星图画布 + #project-hover-label；styles.css：纯黑底、接收器气质。
+
+三、开发体验
+-----------
+- web/package.json 中 dev 固定为：vite --host 127.0.0.1 --port 5173（避免 Windows 下 npm 把 127.0.0.1 误当成项目根目录）。
+- vite.config.ts：root、server.host/port、VITE_BASE；本地默认 base=/。
+
+四、星场绘制 — 当前行为摘要（web/src/starfield.ts）
+------------------------------------------------
+广播音符星（非恒星）
+- 平面映射 + 点亮时像素十字：axisWeight(k)≈0.8*exp(-0.246*k)，R_MAX=13；指数权重 + rgbFade，无 vel 加成。
+- 侧翼加厚：t1/t2 较高；k≥4 增加第三圈 ±3 侧翼（t3）；未点亮时小十字为 5×1+1×5、块 5×5。
+- 全星闪烁：flicker / flickerHi / flickerTip 振幅加大（峰值可接近 1.0）。
+- 四臂不同步：armN/E/S/W（0.8+0.2*sin，相位错开）× armBrightnessMul(dx,dy) 乘到 alpha；斜向取象限平均、侧翼按主横/纵轴归类。视觉上各臂「长度」随闪烁变化。
+- 背景噪点略压暗以免抢戏。
+
+项目恒星（projects.json）
+- hashString32(id) + 独立 phase / freq，与别颗恒星频闪不同步；twinkle=0.87+0.13*sin，最暗约 0.74。
+- 粗核十字 + 延伸臂 d=7…17，armFade 缓降；峰值 base 约 0.4+pulse*0.14；hover 约 39×39 / 43×43；命中半径约 30px。
+
+五、相关文件一览（不含 node_modules、dist 内哈希资源）
+--------------------------------------------------
+- web/src/types.ts、mapNotes.ts、starfield.ts、main.ts、styles.css、vite-env.d.ts
+- web/index.html、vite.config.ts、package.json、tsconfig.json
+- broadcast/latest/*、config/projects.json；web/public/broadcast/*、web/public/config/projects.json
+
+六、备注
+-------
+- 每日广播包经 `pipeline.run all` 或 `python -m pipeline.broadcast_package` 生成后，playlist 指向 `audio/segment_001.wav`（与 score 同源 demo 时可一致闭环）。
+- 查看效果请用 npm run dev（http://127.0.0.1:5173/）；看构建产物需 npm run build 后刷新，避免缓存旧 bundle。
+
+七、0418 当日星场迭代时间线（补充）
+--------------------------------
+- 像素十字星层次、外圈可见度、广播与项目恒星分别加粗/加长四轴多轮。
+- 广播：改为「延伸四轴 + 距离变暗」，去掉整体提亮类乘子；后对广播提高闪烁上限（sin 振幅）。
+- 项目恒星：加长臂、闪烁有下限；频闪用 hash + 每星不同 freq，避免齐闪。
+- 广播再加大：略抬 axisWeight、R_MAX、侧翼与第三圈；四向独立 arm 乘子，臂长感随时间不同步。
+
+八、0418 后续迭代（UI / 字体 / 星场）— 与当前代码一致
+------------------------------------------------
+星场（web/src/starfield.ts）
+- 广播音符闪烁：NOTE_GLOW_PERIOD_MS=5000，cos 调制整周期约 5s，避免快速频闪。
+- 项目恒星：TWINKLE_PERIOD_MS=10000（10s 整周期）；核心与四轴为分阶亮度/色带（像素带状渐变），非纯线性衰减；hover 双框仍为 39×39 / 43×43、stroke 色与页面输入框一致。
+- 命名恒星纵向位置：projectPixel 内整体上移 innerH*0.145（相对归一化 y），y 下限为 padY*0.35，避免顶出安全区。
+
+布局与文案（web/index.html、web/src/styles.css）
+- 顶栏：标题在左「Rain Xia」+ 第二行「— Across the Universe」（.receiver__title-sub，较淡）；状态在右（transmitting / orbit day / 歌词）。
+- 右侧第三行歌词：Nothing's gonna change my world（原 signal/mode 已改为静态文案，main.ts 不再写 signal）。
+- 文档标题 `<title>`：Rain Xia — Across the Universe。
+
+右下角输入（Say anything）
+- 结构：receiver__bottom 置于 main.receiver__sky 内，position:fixed + z-index:50，长条双框（外 rgba(120,165,205,0.1)、内 rgba(150,190,225,0.22)，focus 略提亮），直角；占位符 Say anything。
+- 接口：web/src/receiverSay.ts（init / value / setValue / focus），main.ts 绑定发报回显仍用 #transmit-echo。
+
+中文字体（像素风）
+- web/src/assets/fonts/fusion-pixel-12px-zh-hans.woff2（官方 zh_hans 子集，OFL，见同目录 OFL-Fusion-Pixel.txt）；styles.css 中 @font-face「Fusion Pixel 12px SC」。
+- 字体栈：Silkscreen、VT323、Fusion Pixel 12px SC…（英文优先像素拉丁，中文回退 Fusion）。
+- 正文 clamp 最小字号 12px，与 12px 网格字协调。
+
+其他
+- 网格主区为两行（auto 1fr），避免底栏占位导致输入区不可见。
+
+九、Render v0.1（pipeline/render）与 backend — 对齐 RenderV01.pr.md
+------------------------------------------------------------------
+- pipeline/render/：最小 score 协议（schema.py）、四轨合成（synth.py：track0 三角主声、track1 正弦 drone、track2 噪声/click、track3 FM 遥测 ping）、效果链（effects.py：轻 delay、hiss、高通、软限）、WAV 导出（exporter.py）；demo_score.json 联调谱。
+- CLI：python -m pipeline.render（__main__.py），默认读 pipeline/render/demo_score.json，输出 --out（如 rendered.wav）。
+- 时间网格：1 格 = 1 拍（四分音符），总时长 = bars×4×(60/bpm) 秒；track 取值 0–3。
+- backend/：独立 Python 依赖 backend/requirements.txt（当前仅 numpy）；本地用 python -m venv backend/.venv 创建虚拟环境；backend/run_render.py 可从任意 cwd 运行（将仓库根加入 sys.path）。
+- 生成物示例：broadcast/audio/rendered.wav（16-bit 单声道）；.venv/ 已由根 .gitignore 忽略。
+
+十、Broadcast Package v0.1（pipeline/broadcast_package）— 对齐 Broadcast_PackageV01.pr.md
+------------------------------------------------------------------------------------
+协议与目录
+- 规范产物目录：`broadcast/latest/`（本 PR 仅要求 latest/；`broadcast/archive/` 预留）。
+- 固定文件：`score.json`、`state.json`、`meta.json`、`playlist.json`、`fragments.json`、`audio/segment_001.wav`。
+- `playlist.json` v0.1 为单段：`segments[].id` / `audio` / `score` / `startOffset`；音频路径为包内相对路径（如 `audio/segment_001.wav`）。
+
+实现模块
+- `pipeline/broadcast_package/schema.py`：各 JSON 最小字段与校验；`PACKAGE_VERSION`；`write_json` / `read_json`。
+- `pipeline/broadcast_package/builder.py`：`build_package(PackageInputs)` —— 用 `load_score` 校验 score 与 render 一致、拷贝 score 与 WAV、写出 state/meta/playlist/fragments；默认 state/fragments/meta 辅助函数。
+- `pipeline/broadcast_package/__main__.py`：CLI（默认 `pipeline/render/demo_score.json` → `broadcast/audio/rendered.wav` → `broadcast/latest`）；可选 `--state-json` / `--fragments-json` / `--meta-json`、`--launch-at`、`--orbit-day`、`--segment-id`。
+
+pipeline 入口
+- `python -m pipeline.run render`：仅 score → WAV（默认写入 `broadcast/audio/rendered.wav`）。
+- `python -m pipeline.run package`：仅组装广播包。
+- `python -m pipeline.run all`：先 render 再 package（单日闭环）。
+- 依赖 numpy：请使用 `backend/.venv`（或已安装 `backend/requirements.txt` 的环境）从仓库根执行。
+
+前端对齐
+- `broadcast/meta.json`：`launchAt`、`generatedAt`、`orbitDay`、`packageVersion`、`audioFormat`；顶栏「since launch」与「orbit day」以 meta 为时间锚（`main.ts` 加载 `broadcast/meta.json`）。
+- `broadcast/state.json`：弱状态字段 `signal`、`mode`、`mood`、`transmission`（与 PR 一致；`types.ts` 中 `BroadcastMeta` / `BroadcastState` 已拆分）。
+- 静态资源：`broadcast/latest/` 生成后可同步到 `web/public/broadcast/`（并 `npm run build` 使 `dist/broadcast/` 含 WAV）。
+
+当日生成记录（示例）
+- 已用 `backend\.venv\Scripts\python.exe -m pipeline.run all` 生成 `broadcast/latest/` 与 `broadcast/audio/rendered.wav`；`web/public/broadcast/` 与构建产物已对齐单段 WAV 与 JSON。
