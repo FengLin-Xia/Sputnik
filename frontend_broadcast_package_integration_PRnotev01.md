@@ -179,6 +179,20 @@ mode
 
 不再依赖纯前端写死值
 package 缺失字段时有兜底
+E. 自动播放与信号门（Autoplay & gesture）
+
+多数浏览器禁止带声音的自动播放，需在用户手势后才开始播放。约定如下：
+
+页面默认进入「已接入信号」的视觉状态：广播包加载成功后，显示轻量提示（如 pill 文案 `signal acquired`），表示数据链路已就绪，而非静音失败。
+
+首先尝试 `HTMLAudioElement.play()` 自动播放。
+
+若自动播放失败（Promise reject）：不视为错误；星图可暂时退回内部时钟驱动；同时显示极轻的交互入口，例如主按钮文案 `tap to receive signal`，副文案 `resume transmission`（或同级变体）。用户点击一次后再 `play()` 并接入与 `currentTime` 同步的星图驱动。
+
+自动播放成功则隐藏上述入口，并将信号状态更新为「正在接收」（如 `receiving`）。
+
+无真实音频的包（mock / 开发兜底）可显示 `preview` 等区分文案，不展示手势门。
+
 技术任务拆分
 Task 1：新增 package 读取模块
 统一读取 broadcast/latest/
@@ -197,10 +211,12 @@ Task 5：接入真实 score.json
 Task 6：打通播放时间与点亮逻辑
 音频 currentTime 驱动星图激活
 保证点亮不再是前端模拟时钟
+Task 7：自动播放失败时的手势解锁
+尝试 autoplay；失败则展示轻入口；用户点击后再 play 并绑定星图同步
 验收标准
 功能层
 页面能读取完整 broadcast package
-页面能自动播放真实音频
+页面能自动播放真实音频（或在浏览器限制下通过一次点击恢复播放）
 星图由真实 score.json 驱动
 状态行由真实 meta/state 驱动
 体验层

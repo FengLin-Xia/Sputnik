@@ -28,6 +28,9 @@
             <span class="receiver__label">orbit day</span>
             <span id="orbit-day" class="receiver__value">000</span>
           </p>
+          <p class="receiver__line receiver__line--signal">
+            <span id="receiver-signal-status" class="receiver__signal-pill" aria-live="polite">signal acquired</span>
+          </p>
           <p class="receiver__line receiver__line--tertiary">
             <span id="receiver-state-line" class="receiver__meta"></span>
           </p>
@@ -41,6 +44,12 @@
       </div>
 
       <main class="receiver__sky">
+        <div id="receiver-audio-gate" class="receiver-audio-gate" hidden>
+          <button type="button" id="receiver-audio-resume" class="receiver-audio-gate__btn">
+            tap to receive signal
+          </button>
+          <p class="receiver-audio-gate__sub">resume transmission</p>
+        </div>
         <canvas id="starfield" class="receiver__canvas" aria-label="Broadcast pixel starfield"></canvas>
         <div id="project-hover-label" class="project-hover-label" role="tooltip" hidden></div>
         <div class="receiver__bottom">

@@ -1,4 +1,5 @@
 import type { Note } from "./types";
+import { SCORE_PITCH_MAX, SCORE_PITCH_MIN } from "./types";
 
 export type MappedBroadcastStar = {
   x: number;
@@ -34,15 +35,16 @@ export function mapNotesToStarPositions(
   const innerW = width - 2 * padX;
   const innerH = height - 2 * padY;
 
-  const pitches = notes.map((n) => n.p);
-  const pMin = Math.min(...pitches);
-  const pMax = Math.max(...pitches);
   const maxTrack = Math.max(...notes.map((n) => n.track), 0);
   const trackSpan = maxTrack + 1;
+  const pSpan = SCORE_PITCH_MAX - SCORE_PITCH_MIN;
 
   return notes.map((n, i) => {
     const id = n.id ?? `n${i}`;
-    const pitchNorm = pMax > pMin ? (n.p - pMin) / (pMax - pMin) : 0.5;
+    const pitchNorm = Math.min(
+      1,
+      Math.max(0, (n.p - SCORE_PITCH_MIN) / pSpan)
+    );
     const bandW = innerW / trackSpan;
     const u = beats > 0 ? Math.min(1, Math.max(0, n.t / beats)) : 0;
     const jitterX = (hash01(id, 1) - 0.5) * bandW * 0.14;

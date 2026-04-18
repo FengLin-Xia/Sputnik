@@ -101,30 +101,72 @@ function applyPackageToUi(pkg: LoadedBroadcastPackage, metaEl: HTMLElement, stat
   metaEl.textContent = formatMetaLine(pkg.meta);
 }
 
-function startBroadcastAudio(
+/**
+ * Try autoplay; on browser block, show light gate — user taps once to `play()` and wire starfield.
+ */
+async function setupBroadcastPlayback(
   baseUrl: string,
   pkg: LoadedBroadcastPackage,
-  starfield: Starfield
-): HTMLAudioElement | null {
+  starfield: Starfield,
+  signalStatusEl: HTMLElement,
+  gateEl: HTMLElement,
+  resumeBtn: HTMLButtonElement
+): Promise<void> {
   if (pkg.isMock) {
     starfield.setBroadcastAudio(null);
-    return null;
+    signalStatusEl.textContent = "preview · no broadcast audio";
+    gateEl.hidden = true;
+    return;
   }
+
   const seg = primarySegment(pkg.playlist);
-  const url = resolveBroadcastAsset(baseUrl, seg.audio);
-  const audio = new Audio(url);
+  const audio = new Audio(resolveBroadcastAsset(baseUrl, seg.audio));
   audio.loop = true;
   audio.preload = "auto";
-  starfield.setBroadcastAudio(audio, seg.startOffset);
-  void audio.play().catch((err) => {
-    console.warn("[Sputnik] audio autoplay failed, using starfield clock fallback:", err);
+
+  signalStatusEl.textContent = "signal acquired";
+
+  const wirePlaying = (): void => {
+    starfield.setBroadcastAudio(audio, seg.startOffset);
+    signalStatusEl.textContent = "receiving";
+    gateEl.hidden = true;
+  };
+
+  audio.addEventListener(
+    "error",
+    () => {
+      starfield.setBroadcastAudio(null);
+      signalStatusEl.textContent = "signal acquired · audio unavailable";
+      gateEl.hidden = true;
+      console.warn("[Sputnik] audio load error");
+    },
+    { once: true }
+  );
+
+  try {
+    await audio.play();
+    wirePlaying();
+  } catch (err) {
+    if (audio.error) {
+      return;
+    }
+    console.warn("[Sputnik] autoplay blocked, awaiting gesture:", err);
     starfield.setBroadcastAudio(null);
-  });
-  audio.addEventListener("error", () => {
-    console.warn("[Sputnik] audio load error, using starfield clock fallback");
-    starfield.setBroadcastAudio(null);
-  });
-  return audio;
+    gateEl.hidden = false;
+    signalStatusEl.textContent = "signal acquired";
+    resumeBtn.addEventListener(
+      "click",
+      () => {
+        void audio
+          .play()
+          .then(wirePlaying)
+          .catch((e) => {
+            console.warn("[Sputnik] play after gesture failed:", e);
+          });
+      },
+      { once: true }
+    );
+  }
 }
 
 async function main(): Promise<void> {
@@ -137,6 +179,9 @@ async function main(): Promise<void> {
   const orbitEl = document.querySelector<HTMLElement>("#orbit-day");
   const stateLineEl = document.querySelector<HTMLElement>("#receiver-state-line");
   const metaLineEl = document.querySelector<HTMLElement>("#receiver-meta-line");
+  const signalStatusEl = document.querySelector<HTMLElement>("#receiver-signal-status");
+  const audioGateEl = document.querySelector<HTMLElement>("#receiver-audio-gate");
+  const audioResumeBtn = document.querySelector<HTMLButtonElement>("#receiver-audio-resume");
   const canvas = document.querySelector<HTMLCanvasElement>("#starfield");
   const sayInput = document.querySelector<HTMLInputElement>("#say-anything-input");
   const echoEl = document.querySelector<HTMLElement>("#transmit-echo");
@@ -147,6 +192,9 @@ async function main(): Promise<void> {
     !orbitEl ||
     !stateLineEl ||
     !metaLineEl ||
+    !signalStatusEl ||
+    !audioGateEl ||
+    !audioResumeBtn ||
     !canvas ||
     !sayInput ||
     !echoEl ||
@@ -161,7 +209,7 @@ async function main(): Promise<void> {
   applyPackageToUi(pkg, metaLineEl, stateLineEl);
 
   const starfield = new Starfield(canvas, pkg.score, projectsFile.projects);
-  startBroadcastAudio(base, pkg, starfield);
+  await setupBroadcastPlayback(base, pkg, starfield, signalStatusEl, audioGateEl, audioResumeBtn);
 
   starfield.resize();
   window.addEventListener("resize", () => starfield.resize());

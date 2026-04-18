@@ -138,3 +138,18 @@ pipeline 入口
 
 未做（PR 范围外）
 - 多段 playlist 编排、输入框真实提交、archive 切换、污染机制。
+
+十二、Sputnik Score v0.1 协议对齐（Sputnik_Score_Spec_PrV01.md）
+----------------------------------------------------------------
+规范文档：根目录 `Sputnik_Score_Spec_PrV01.md`，定义 `score.json` 最小乐谱协议（bpm / bars / notes：`t,d,p,v,track`），供 render、前端星图与后续 composition 共用。
+
+pipeline/render/schema.py
+- `validate_score` / `load_score` 与规格硬约束一致：`bpm`∈[50,100]；`bars` 仅 4 或 8；每条 note：`t`≥0，`d`∈[0.25,4]（网格单位），`p`∈[48,84]，`v`∈(0,1]，`track`∈0–3；`t+d` 不超过片段总拍数；`notes` 条数 ≤64。
+- 模块内导出常量名：`BPM_MIN`/`BPM_MAX`、`BARS_ALLOWED`、`PITCH_MIN`/`PITCH_MAX`、`DURATION_MIN`/`DURATION_MAX`、`MAX_NOTES`（与规格章节对应）。
+
+示例乐谱修正（三处内容一致）
+- `broadcast/latest/score.json`、`web/public/broadcast/score.json`、`pipeline/render/demo_score.json`：`p` 超上界的一条由 90 改为 83；`d` 低于建议下限的一条由 0.2 改为 0.25，以便通过上述校验。
+
+前端（web/src/types.ts、mapNotes.ts）
+- `types.ts`：增加 `SCORE_PITCH_MIN`（48）、`SCORE_PITCH_MAX`（84）；为 `Note`/`Score` 字段补充与 v0.1 一致的 JSDoc。
+- `mapNotesToStarPositions`：纵轴音高归一化改为相对规格音域 [48,84]，而非本段 notes 的 min/max，与规格「星图映射稳定区间」一致。

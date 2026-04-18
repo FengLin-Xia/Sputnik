@@ -1,4 +1,4 @@
-"""Minimal score format for Render v0.1: validation and loading."""
+"""Sputnik Score v0.1 — validation and loading (see Sputnik_Score_Spec_PrV01.md)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,16 @@ from typing import Any, List
 
 
 BEATS_PER_BAR = 4
+
+# Hard / recommended bounds aligned with the published spec
+BPM_MIN = 50
+BPM_MAX = 100
+BARS_ALLOWED = (4, 8)
+PITCH_MIN = 48
+PITCH_MAX = 84
+DURATION_MIN = 0.25
+DURATION_MAX = 4.0
+MAX_NOTES = 64
 
 
 @dataclass(frozen=True)
@@ -54,20 +64,26 @@ def _note_from_dict(raw: dict[str, Any], index: int) -> Note:
 
 
 def validate_score(score: Score) -> None:
-    if score.bpm <= 0 or score.bpm > 480:
-        raise ValueError("bpm must be in (0, 480]")
-    if score.bars < 1 or score.bars > 256:
-        raise ValueError("bars must be in [1, 256]")
+    if not (BPM_MIN <= score.bpm <= BPM_MAX):
+        raise ValueError(f"bpm must be in [{BPM_MIN}, {BPM_MAX}] (v0.1 spec)")
+    if score.bars not in BARS_ALLOWED:
+        raise ValueError(f"bars must be one of {BARS_ALLOWED} (v0.1 spec)")
+    if len(score.notes) > MAX_NOTES:
+        raise ValueError(f"notes: at most {MAX_NOTES} notes in v0.1")
     total = score.total_beats
     for i, n in enumerate(score.notes):
-        if n.d <= 0:
-            raise ValueError(f"notes[{i}]: d must be > 0")
         if n.t < 0:
             raise ValueError(f"notes[{i}]: t must be >= 0")
+        if not (DURATION_MIN <= n.d <= DURATION_MAX):
+            raise ValueError(
+                f"notes[{i}]: d must be in [{DURATION_MIN}, {DURATION_MAX}] (grid units, v0.1)"
+            )
         if n.t + n.d > total + 1e-9:
-            raise ValueError(f"notes[{i}]: t+d exceeds bars ({n.t}+{n.d} > {total} beats)")
-        if not (0.0 <= n.v <= 1.0):
-            raise ValueError(f"notes[{i}]: v must be in [0, 1]")
+            raise ValueError(f"notes[{i}]: t+d exceeds segment ({n.t}+{n.d} > {total} beats)")
+        if not (PITCH_MIN <= n.p <= PITCH_MAX):
+            raise ValueError(f"notes[{i}]: p must be in [{PITCH_MIN}, {PITCH_MAX}] (v0.1)")
+        if not (0.0 < n.v <= 1.0):
+            raise ValueError(f"notes[{i}]: v must be in (0, 1] (v0.1)")
         if n.track < 0 or n.track > 3:
             raise ValueError(f"notes[{i}]: track must be 0–3 in v0.1")
 

@@ -113,6 +113,75 @@ body {
   color: var(--fg-bright);
 }
 
+.receiver__line--signal {
+  font-size: 0.72em;
+  margin-top: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+.receiver__signal-pill {
+  display: inline-block;
+  padding: 0.12em 0.55em 0.1em;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  color: rgba(165, 205, 235, 0.72);
+  border: 1px solid rgba(130, 175, 215, 0.28);
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.45);
+}
+
+.receiver-audio-gate {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+
+.receiver-audio-gate[hidden] {
+  display: none !important;
+}
+
+.receiver-audio-gate__btn {
+  pointer-events: auto;
+  margin: 0;
+  padding: 0.45rem 0.9rem 0.42rem;
+  font-family: var(--font);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: rgba(185, 215, 245, 0.88);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(150, 190, 225, 0.38);
+  cursor: pointer;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.85);
+}
+
+.receiver-audio-gate__btn:hover {
+  border-color: rgba(170, 205, 235, 0.52);
+  color: rgba(200, 225, 250, 0.95);
+}
+
+.receiver-audio-gate__btn:focus-visible {
+  outline: 1px solid rgba(150, 190, 225, 0.45);
+  outline-offset: 2px;
+}
+
+.receiver-audio-gate__sub {
+  margin: 0;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: lowercase;
+  color: rgba(165, 195, 225, 0.42);
+  pointer-events: none;
+}
+
 .receiver__line--tertiary {
   font-size: 0.78em;
   opacity: 0.48;
