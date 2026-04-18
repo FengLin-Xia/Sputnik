@@ -13,9 +13,9 @@ Sputnik 改动记录 — 2026-04-18
 二、前端 Receiver（对齐 Reciever_Visual_mock_v01.md）
 ----------------------------------------------------
 - 平面像素星空（非极坐标图）：mapNotes.ts 中 mapNotesToStarPositions — track 分带、时间流动、音高 + 抖动。
-- 三层：背景噪点（略压暗以免抢戏）、广播音符星、项目恒星；mock 时钟推进点亮与余辉（glow[]）。
-- 静态数据：web/public/broadcast/*.json、web/public/config/projects.json（与仓库根 broadcast/latest、config 同步）；main 请求 broadcast/state.json、score.json、meta.json、config/projects.json。
-- main.ts：launch 计时；项目星 hover 标签、点击 console.info；发报框占位交互。
+- 三层：背景噪点（略压暗以免抢戏）、广播音符星、项目恒星；点亮时序：有广播音频时以 `audio.currentTime` 换算拍号，否则内部时钟循环（glow[] 余辉）。
+- 静态数据：web/public/broadcast/*.json、web/public/config/projects.json（与仓库根 broadcast/latest、config 同步）；见「十一」package loader 与 playlist 音频。
+- main.ts：launch / orbit / 状态行 / meta 行来自广播包；项目星 hover；发报框占位交互。
 - index.html：星图画布 + #project-hover-label；styles.css：纯黑底、接收器气质。
 
 三、开发体验
@@ -38,7 +38,7 @@ Sputnik 改动记录 — 2026-04-18
 
 五、相关文件一览（不含 node_modules、dist 内哈希资源）
 --------------------------------------------------
-- web/src/types.ts、mapNotes.ts、starfield.ts、main.ts、styles.css、vite-env.d.ts
+- web/src/types.ts、broadcastPackage.ts、mapNotes.ts、starfield.ts、main.ts、styles.css、vite-env.d.ts
 - web/index.html、vite.config.ts、package.json、tsconfig.json
 - broadcast/latest/*、config/projects.json；web/public/broadcast/*、web/public/config/projects.json
 
@@ -62,8 +62,8 @@ Sputnik 改动记录 — 2026-04-18
 - 命名恒星纵向位置：projectPixel 内整体上移 innerH*0.145（相对归一化 y），y 下限为 padY*0.35，避免顶出安全区。
 
 布局与文案（web/index.html、web/src/styles.css）
-- 顶栏：标题在左「Rain Xia」+ 第二行「— Across the Universe」（.receiver__title-sub，较淡）；状态在右（transmitting / orbit day / 歌词）。
-- 右侧第三行歌词：Nothing's gonna change my world（原 signal/mode 已改为静态文案，main.ts 不再写 signal）。
+- 顶栏：标题在左「Rain Xia」+ 第二行「— Across the Universe」（.receiver__title-sub，较淡）；状态在右（since launch / orbit day / 包内 state 一行 / 歌词 / meta 一行）。
+- 歌词行：Nothing's gonna change my world；其上一行为 `state.json` 驱动的 signal · mode · mood · transmission；再上一行 meta 摘要（generatedAt · packageVersion · audioFormat）。
 - 文档标题 `<title>`：Rain Xia — Across the Universe。
 
 右下角输入（Say anything）
@@ -111,3 +111,30 @@ pipeline 入口
 
 当日生成记录（示例）
 - 已用 `backend\.venv\Scripts\python.exe -m pipeline.run all` 生成 `broadcast/latest/` 与 `broadcast/audio/rendered.wav`；`web/public/broadcast/` 与构建产物已对齐单段 WAV 与 JSON。
+
+十一、前端接入 Broadcast Package v0.1（Receiver Integration）— 对齐 frontend_broadcast_package_integration_PRnotev01.md
+---------------------------------------------------------------------------------------------------------------
+目标
+- 接收端以完整广播包为数据源（非手写 mock）；打开即播真实 WAV；星图点亮与播放时间对齐；状态行来自 meta/state。
+
+新增模块（web/src/broadcastPackage.ts）
+- `loadBroadcastPackage(base)`：并行拉取 `broadcast/meta.json`、`state.json`、`playlist.json`、`score.json`；失败时回退内嵌 mock（控制台 warn），便于无资源开发。
+- `resolveBroadcastAsset(base, segment.audio)`：将 playlist 内相对路径解析为 `{base}broadcast/...`，不写死文件名。
+- `primarySegment(playlist)`：v0.1 单段播放入口。
+
+类型（web/src/types.ts）
+- `Playlist`、`PlaylistSegment`（含 `startOffset` 拍偏移，与乐谱时间轴一致）。
+
+星场与音频（web/src/starfield.ts）
+- `setBroadcastAudio(audio | null, startOffsetBeats)`：有 `HTMLAudioElement` 时，playhead 由 `audio.currentTime` + bpm 换算为拍并与整段循环对齐；无音频或加载/自动播放失败时回退 `performance.now()` 循环（与旧 mock 时钟行为一致）。
+
+主入口（web/src/main.ts）
+- 并行：`loadBroadcastPackage` + `config/projects.json`；星图使用包内 `score`。
+- 非 mock：按 playlist 首段创建 `Audio(url)`，`loop=true`，`play()`；失败或 `error` 时取消音频驱动。
+- UI：`#receiver-state-line` 展示 state；`#receiver-meta-line` 展示 meta；since launch / orbit day 仍来自 meta。
+
+页面结构（web/index.html、styles.css）
+- 增加状态行、meta 行（`.receiver__line--quaternary`、`.receiver__meta--sub`）；歌词行保留。
+
+未做（PR 范围外）
+- 多段 playlist 编排、输入框真实提交、archive 切换、污染机制。

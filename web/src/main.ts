@@ -1,4 +1,10 @@
-import type { BroadcastMeta, BroadcastState, ProjectsFile, Score } from "./types";
+import type { BroadcastMeta, BroadcastState, ProjectsFile } from "./types";
+import {
+  loadBroadcastPackage,
+  primarySegment,
+  resolveBroadcastAsset,
+  type LoadedBroadcastPackage,
+} from "./broadcastPackage";
 import { receiverSay } from "./receiverSay";
 import { Starfield } from "./starfield";
 
@@ -42,6 +48,21 @@ function runSinceLaunchTimer(launchAt: string, sinceEl: HTMLElement): void {
   window.setInterval(tick, 1000);
 }
 
+function formatStateLine(state: BroadcastState): string {
+  const parts: string[] = [state.signal, state.mode];
+  if (state.mood) {
+    parts.push(state.mood);
+  }
+  if (state.transmission) {
+    parts.push(state.transmission);
+  }
+  return parts.join(" · ");
+}
+
+function formatMetaLine(meta: BroadcastMeta): string {
+  return `generated ${meta.generatedAt} · v${meta.packageVersion} · ${meta.audioFormat}`;
+}
+
 function bindTransmit(input: HTMLInputElement, echoEl: HTMLElement): void {
   let clearTimer = 0;
   const show = (lines: string[]): void => {
@@ -75,30 +96,73 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function applyPackageToUi(pkg: LoadedBroadcastPackage, metaEl: HTMLElement, stateEl: HTMLElement): void {
+  stateEl.textContent = formatStateLine(pkg.state);
+  metaEl.textContent = formatMetaLine(pkg.meta);
+}
+
+function startBroadcastAudio(
+  baseUrl: string,
+  pkg: LoadedBroadcastPackage,
+  starfield: Starfield
+): HTMLAudioElement | null {
+  if (pkg.isMock) {
+    starfield.setBroadcastAudio(null);
+    return null;
+  }
+  const seg = primarySegment(pkg.playlist);
+  const url = resolveBroadcastAsset(baseUrl, seg.audio);
+  const audio = new Audio(url);
+  audio.loop = true;
+  audio.preload = "auto";
+  starfield.setBroadcastAudio(audio, seg.startOffset);
+  void audio.play().catch((err) => {
+    console.warn("[Sputnik] audio autoplay failed, using starfield clock fallback:", err);
+    starfield.setBroadcastAudio(null);
+  });
+  audio.addEventListener("error", () => {
+    console.warn("[Sputnik] audio load error, using starfield clock fallback");
+    starfield.setBroadcastAudio(null);
+  });
+  return audio;
+}
+
 async function main(): Promise<void> {
-  const [, score, projectsFile, meta] = await Promise.all([
-    loadJson<BroadcastState>("broadcast/state.json"),
-    loadJson<Score>("broadcast/score.json"),
+  const [pkg, projectsFile] = await Promise.all([
+    loadBroadcastPackage(base),
     loadJson<ProjectsFile>("config/projects.json"),
-    loadJson<BroadcastMeta>("broadcast/meta.json"),
   ]);
 
   const sinceEl = document.querySelector<HTMLElement>("#since-launch");
   const orbitEl = document.querySelector<HTMLElement>("#orbit-day");
+  const stateLineEl = document.querySelector<HTMLElement>("#receiver-state-line");
+  const metaLineEl = document.querySelector<HTMLElement>("#receiver-meta-line");
   const canvas = document.querySelector<HTMLCanvasElement>("#starfield");
   const sayInput = document.querySelector<HTMLInputElement>("#say-anything-input");
   const echoEl = document.querySelector<HTMLElement>("#transmit-echo");
   const projectLabelEl = document.querySelector<HTMLElement>("#project-hover-label");
 
-  if (!sinceEl || !orbitEl || !canvas || !sayInput || !echoEl || !projectLabelEl) {
+  if (
+    !sinceEl ||
+    !orbitEl ||
+    !stateLineEl ||
+    !metaLineEl ||
+    !canvas ||
+    !sayInput ||
+    !echoEl ||
+    !projectLabelEl
+  ) {
     throw new Error("Missing DOM nodes");
   }
 
   receiverSay.init(sayInput);
-  orbitEl.textContent = pad3(meta.orbitDay);
-  runSinceLaunchTimer(meta.launchAt, sinceEl);
+  orbitEl.textContent = pad3(pkg.meta.orbitDay);
+  runSinceLaunchTimer(pkg.meta.launchAt, sinceEl);
+  applyPackageToUi(pkg, metaLineEl, stateLineEl);
 
-  const starfield = new Starfield(canvas, score, projectsFile.projects);
+  const starfield = new Starfield(canvas, pkg.score, projectsFile.projects);
+  startBroadcastAudio(base, pkg, starfield);
+
   starfield.resize();
   window.addEventListener("resize", () => starfield.resize());
 

@@ -119,6 +119,16 @@ body {
   margin-top: 0.4rem;
 }
 
+.receiver__line--quaternary {
+  font-size: 0.7em;
+  opacity: 0.36;
+  margin-top: 0.12rem;
+}
+
+.receiver__meta--sub {
+  letter-spacing: 0.04em;
+}
+
 .receiver__label {
   margin-right: 0.55em;
   color: var(--fg-dim);

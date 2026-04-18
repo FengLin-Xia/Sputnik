@@ -40,3 +40,18 @@ export type ProjectStar = {
 export type ProjectsFile = {
   projects: ProjectStar[];
 };
+
+/** broadcast/playlist.json (v0.1 single segment) */
+export type PlaylistSegment = {
+  id: string;
+  /** Path relative to broadcast/ root, e.g. audio/segment_001.wav */
+  audio: string;
+  /** Score filename within package (v0.1: score.json) */
+  score: string;
+  /** Offset in beats on the score timeline where this segment starts */
+  startOffset: number;
+};
+
+export type Playlist = {
+  segments: PlaylistSegment[];
+};

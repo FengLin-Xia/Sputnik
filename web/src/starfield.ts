@@ -46,6 +46,9 @@ export class Starfield {
   private readonly projects: ProjectStar[];
   private readonly start = performance.now();
   private lastFrame = this.start;
+  /** When set, playhead follows HTMLAudioElement.currentTime (broadcast sync). */
+  private audioElement: HTMLAudioElement | null = null;
+  private audioStartOffsetBeats = 0;
   private logicalW = 0;
   private logicalH = 0;
   private mapped: ReturnType<typeof mapNotesToStarPositions> = [];
@@ -67,6 +70,33 @@ export class Starfield {
 
   setHoveredProject(id: string | null): void {
     this.hoveredId = id;
+  }
+
+  /**
+   * Drive note playhead from broadcast audio. Pass null to use internal wall-clock loop
+   * (mock / no audio). startOffsetBeats shifts the score timeline for this segment.
+   */
+  setBroadcastAudio(audio: HTMLAudioElement | null, startOffsetBeats = 0): void {
+    this.audioElement = audio;
+    this.audioStartOffsetBeats = startOffsetBeats;
+  }
+
+  private computePlayheadBeats(): number {
+    const bpm = this.score.bpm;
+    const beats = totalBeats(this.score);
+    const secPerBeat = 60 / bpm;
+    const loopSec = beats * secPerBeat;
+    if (loopSec <= 0) {
+      return 0;
+    }
+    if (this.audioElement) {
+      const t = ((this.audioElement.currentTime % loopSec) + loopSec) % loopSec;
+      const ph = (t / secPerBeat + this.audioStartOffsetBeats) % beats;
+      return ph < 0 ? ph + beats : ph;
+    }
+    const elapsed = (performance.now() - this.start) / 1000;
+    const t = ((elapsed % loopSec) + loopSec) % loopSec;
+    return (t / secPerBeat) % beats;
   }
 
   /** Viewport pixel position for floating label (above star). */
@@ -153,12 +183,7 @@ export class Starfield {
     const dt = Math.min(0.048, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
 
-    const bpm = this.score.bpm;
-    const beats = totalBeats(this.score);
-    const secPerBeat = 60 / bpm;
-    const loopSec = beats * secPerBeat;
-    const elapsed = (now - this.start) / 1000;
-    const playhead = loopSec > 0 ? ((elapsed % loopSec) / secPerBeat) % beats : 0;
+    const playhead = this.computePlayheadBeats();
 
     const notes = this.score.notes;
     for (let i = 0; i < notes.length; i++) {
