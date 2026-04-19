@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
-
-from pipeline.render.exporter import render_file_to_wav
 
 
 def _repo_root() -> Path:
@@ -13,6 +12,8 @@ def _repo_root() -> Path:
 
 
 def _cmd_render(args: argparse.Namespace) -> None:
+    from pipeline.render.exporter import render_file_to_wav
+
     repo = Path(args.repo).resolve()
     score = (args.score if args.score.is_absolute() else repo / args.score).resolve()
     out = (args.out if args.out.is_absolute() else repo / args.out).resolve()
@@ -37,6 +38,34 @@ def _cmd_package(args: argparse.Namespace) -> None:
     if args.orbit_day is not None:
         argv += ["--orbit-day", str(args.orbit_day)]
     package_main(argv)
+
+
+def _cmd_compose(args: argparse.Namespace) -> None:
+    from pipeline.composition.composer import compose, write_score_json
+    from pipeline.composition.prompt_builder import CompositionInput
+    from pipeline.composition.providers.mock_provider import MockProvider
+    from pipeline.composition.providers.ollama_provider import OllamaProvider
+
+    repo = Path(args.repo).resolve()
+    seeds = tuple(args.seeds) if args.seeds else CompositionInput().seeds
+    inp = CompositionInput(
+        seeds=seeds,
+        mode=args.mode,
+        mood=args.mood,
+        signal=args.signal,
+    )
+    if args.provider == "mock":
+        provider = MockProvider()
+    else:
+        provider = OllamaProvider(
+            model=args.model,
+            base_url=args.ollama_url,
+            timeout=args.timeout,
+        )
+    out_path = args.out if args.out.is_absolute() else repo / args.out
+    result = compose(inp, provider, max_retries=args.max_retries)
+    write_score_json(result.score, out_path)
+    print(f"Wrote {out_path.resolve()} (attempts={result.attempts})")
 
 
 def _cmd_all(args: argparse.Namespace) -> None:
@@ -87,6 +116,25 @@ def main() -> None:
     r.add_argument("--sr", type=int, default=44100)
     r.add_argument("--seed", type=int, default=42)
     r.set_defaults(func=_cmd_render)
+
+    c = sub.add_parser("compose", help="Composition v0.1 — score.json (mock or Ollama)")
+    c.add_argument("--repo", type=Path, default=repo)
+    c.add_argument("--provider", choices=("mock", "ollama"), default="mock")
+    c.add_argument("--model", default="qwen2.5:7b")
+    c.add_argument("--ollama-url", default=os.environ.get("OLLAMA_BASE_URL"))
+    c.add_argument("--timeout", type=float, default=120.0)
+    c.add_argument(
+        "--out",
+        type=Path,
+        default=Path("composition_output/score.json"),
+        help="Output score JSON",
+    )
+    c.add_argument("--seed", action="append", dest="seeds")
+    c.add_argument("--mode", default="beacon")
+    c.add_argument("--mood", default="cold")
+    c.add_argument("--signal", default="stable")
+    c.add_argument("--max-retries", type=int, default=3)
+    c.set_defaults(func=_cmd_compose)
 
     p = sub.add_parser("package", help="Assemble broadcast/latest (see also: python -m pipeline.broadcast_package)")
     p.add_argument("--repo", type=Path, default=None)
