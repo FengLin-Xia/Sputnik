@@ -7,7 +7,7 @@ Sputnik 改动记录 — 2026-04-18
 - broadcast/latest/：每日广播包样例（meta、state、score、playlist、fragments、audio/）；broadcast/archive/ 占位。
 - config/projects.json：项目恒星坐标（与广播包分离）。
 - web/：静态接收端（Vite + TypeScript）。
-- .github/workflows/pages.yml：构建 web 并部署 GitHub Pages（VITE_BASE=/Sputnik/ 需与仓库名一致）。
+- .github/workflows/pages.yml：构建 web 并部署 GitHub Pages；VITE_BASE 见「十四」。
 - web/public/.nojekyll、CNAME.example；根目录 .gitignore。
 
 二、前端 Receiver（对齐 Reciever_Visual_mock_v01.md）
@@ -153,3 +153,43 @@ pipeline/render/schema.py
 前端（web/src/types.ts、mapNotes.ts）
 - `types.ts`：增加 `SCORE_PITCH_MIN`（48）、`SCORE_PITCH_MAX`（84）；为 `Note`/`Score` 字段补充与 v0.1 一致的 JSDoc。
 - `mapNotesToStarPositions`：纵轴音高归一化改为相对规格音域 [48,84]，而非本段 notes 的 min/max，与规格「星图映射稳定区间」一致。
+
+十三、Composition v0.1（pipeline/composition）— 对齐 Composition_v0.1_PR.md
+---------------------------------------------------------------------------
+目标
+- 从「种子 + 可选状态」经本地模型（或 mock）生成合法 `score.json`，与 `pipeline/render/schema.py`（Sputnik Score v0.1）校验一致；不接 drift、不接用户污染、不接多模型 UI。
+
+目录与职责
+- `pipeline/composition/prompt_builder.py`：`CompositionInput`（默认风格种子、`mode`/`mood`/`signal`、预留 `extra_context`）；`build_messages()` 产出 Ollama 风格 `system` + `user`（注入规格边界，引用 schema 常量）。
+- `pipeline/composition/providers/mock_provider.py`：无网络，返回固定合法 JSON（与 `demo_score.json` 同形），便于无 Ollama 联调。
+- `pipeline/composition/providers/ollama_provider.py`：`POST {base}/api/chat`（标准库 `urllib`），解析 `message.content`；可配置 `model`、`base_url`、`timeout`；默认基址来自环境变量 `OLLAMA_HOST`（`host:port` 或完整 `http(s)://`）。
+- `pipeline/composition/composer.py`：去 markdown 代码围栏、括号匹配抽取首个 JSON 对象；`parse_score_json` → `score_from_dict`；失败重试；`write_score_json` 写出格式化 JSON。
+- `pipeline/composition/providers/__init__.py`：`TextProvider` Protocol（`generate(messages) -> str`）。
+- `pipeline/composition/__init__.py`：导出 `compose`、`CompositionInput`、`write_score_json` 等。
+- `pipeline/composition/__main__.py`：CLI（`--provider mock|ollama`、`--model`、`--ollama-url`、`--timeout`、`--out`、`--seed` 可重复、`--mode`/`--mood`/`--signal`、`--max-retries`）。
+
+CLI 与产物
+- `python -m pipeline.composition`（默认 `--provider mock`）：写出 `composition_output/score.json`（目录含 `.gitkeep`）。
+- `python -m pipeline.run compose`：同上能力，子命令挂在总管线；`--out` 默认 `composition_output/score.json`。
+- 真机 Ollama：需本机 `ollama serve` 且已拉模型；CLI 的 `--ollama-url` 或环境变量 `OLLAMA_BASE_URL` 传入完整基址时覆盖默认。
+
+与 render 的解耦（便于无 numpy 只跑生成）
+- `pipeline/render/__init__.py`：仅立即导入 `schema`；`exporter`/`synth` 经 `__getattr__` 懒加载，避免 `import pipeline.render` 即依赖 numpy。
+- `pipeline/run.py`：顶部不再 `import render_file_to_wav`；仅在 `render` / `all` 子命令内导入 exporter，使 `compose` 子命令可在未安装 numpy 的环境下执行。
+
+后续衔接
+- 生成物可再经 `python -m pipeline.render --score composition_output/score.json` 转 WAV，或拷贝/接入 `broadcast_package` 与 `web/public/broadcast/`（与第六节、第十节流程一致）。
+
+十四、GitHub Pages：VITE_BASE 双路径（*.github.io 与自定义域名根）— 2026-04-20
+----------------------------------------------------------------------------
+问题
+- 项目站 URL 为 `https://<user>.github.io/<仓库名>/`，构建需 `VITE_BASE=/<仓库名>/`；绑定自定义域名并挂在站点根时，需 `VITE_BASE=/`。原先 workflow 写死 `/Sputnik/`，换域名后资源路径易 404。
+
+改动（.github/workflows/pages.yml）
+- 增加「Resolve VITE_BASE」步骤，按优先级取值：① `workflow_dispatch` 手动输入 `vite_base`（非空时）；② 仓库 Actions 变量 `PAGES_VITE_BASE`（非空时）；③ 默认 `/${{ github.event.repository.name }}/`（与仓库名一致，无需再手改仓库名）。
+- 构建日志会打印 `Resolved VITE_BASE=...`，便于核对。
+
+使用说明
+- 长期用 `*.github.io/<repo>/`：不设 `PAGES_VITE_BASE` 即可（默认即 `/<repo>/`）。
+- 长期用自定义域名根：在仓库 Settings → Secrets and variables → Actions → Variables 中设置 `PAGES_VITE_BASE` = `/`。
+- 临时试一次：Actions 里 Run workflow，填写 `vite_base`（如 `/`）。
