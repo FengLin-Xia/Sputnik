@@ -383,6 +383,21 @@ body {
   color: rgba(255, 160, 160, 0.85);
 }
 
+.receiver__wasd-hint {
+  position: fixed;
+  left: var(--space);
+  bottom: var(--space);
+  margin: 0;
+  font-family: var(--font);
+  font-size: 0.7em;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--fg);
+  opacity: 0.36;
+  pointer-events: none;
+  z-index: 50;
+}
+
 @media (max-width: 520px) {
   .receiver__top {
     grid-template-columns: 1fr;
