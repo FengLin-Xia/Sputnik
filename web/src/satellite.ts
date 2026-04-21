@@ -108,17 +108,17 @@ export class Satellite {
     }
 
     ctx.fillStyle = "rgba(70,150,255,0.07)";
-    ctx.fillRect(x0 - 6, y0 - 6, 13, 13);
+    ctx.fillRect(x0 - 8, y0 - 7, 17, 15);
 
     ctx.fillStyle = "rgba(130,205,255,0.88)";
-    ctx.fillRect(x0, y0 - 4, 1, 2);
+    ctx.fillRect(x0, y0 - 5, 1, 3);
 
     ctx.fillStyle = "rgba(90,180,255,0.95)";
-    ctx.fillRect(x0 - 1, y0 - 1, 3, 3);
+    ctx.fillRect(x0 - 2, y0 - 2, 5, 5);
 
     ctx.fillStyle = "rgba(75,160,255,0.80)";
-    ctx.fillRect(x0 - 4, y0, 3, 1);
-    ctx.fillRect(x0 + 2, y0, 3, 1);
+    ctx.fillRect(x0 - 6, y0, 4, 1);
+    ctx.fillRect(x0 + 3, y0, 4, 1);
 
     ctx.fillStyle = "rgba(200,235,255,1.0)";
     ctx.fillRect(x0, y0, 1, 1);

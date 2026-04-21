@@ -188,8 +188,6 @@ async function main(): Promise<void> {
   const echoEl = document.querySelector<HTMLElement>("#transmit-echo");
   const projectLabelEl = document.querySelector<HTMLElement>("#project-hover-label");
   const satCanvas = document.querySelector<HTMLCanvasElement>("#satellite-canvas");
-  const satTipEl = document.querySelector<HTMLElement>("#sat-tip");
-  const satTipLabelEl = document.querySelector<HTMLElement>("#sat-tip-label");
 
   if (
     !sinceEl ||
@@ -203,9 +201,7 @@ async function main(): Promise<void> {
     !sayInput ||
     !echoEl ||
     !projectLabelEl ||
-    !satCanvas ||
-    !satTipEl ||
-    !satTipLabelEl
+    !satCanvas
   ) {
     throw new Error("Missing DOM nodes");
   }
@@ -221,10 +217,14 @@ async function main(): Promise<void> {
   starfield.resize();
   window.addEventListener("resize", () => starfield.resize());
 
+  let hoveredStar: string | null = null;
+
   const updateHover = (clientX: number, clientY: number): void => {
     const hit = starfield.hitTest(clientX, clientY);
-    starfield.setHoveredProject(hit?.id ?? null);
+    hoveredStar = hit?.id ?? null;
+    starfield.setHoveredProject(hoveredStar);
     if (hit) {
+      projectLabelEl.classList.remove("project-hover-label--sat");
       projectLabelEl.textContent = hit.label;
       projectLabelEl.hidden = false;
       const anchor = starfield.getProjectLabelAnchor(hit);
@@ -241,9 +241,12 @@ async function main(): Promise<void> {
     updateHover(e.clientX, e.clientY);
   });
   canvas.addEventListener("mouseleave", () => {
+    hoveredStar = null;
     starfield.setHoveredProject(null);
-    projectLabelEl.hidden = true;
     canvas.style.cursor = "default";
+    if (!projectLabelEl.classList.contains("project-hover-label--sat")) {
+      projectLabelEl.hidden = true;
+    }
   });
   canvas.addEventListener("click", (e) => {
     const hit = starfield.hitTest(e.clientX, e.clientY);
@@ -293,62 +296,41 @@ async function main(): Promise<void> {
     if (e.key === "d" || e.key === "D") keys.right = false;
   });
 
-  // Satellite tip click
-  let satTipAction: (() => void) | null = null;
-  satTipEl.addEventListener("click", () => { satTipAction?.(); });
-
   const PROX_PX = 55;
-  const DOM_PROX_PX = 70;
+  let satStarAction: (() => void) | null = null;
+  projectLabelEl.addEventListener("click", () => { satStarAction?.(); });
 
   type ProjPos = ReturnType<typeof starfield.getProjectPositions>;
 
-  const updateSatTip = (projPositions: ProjPos): void => {
+  const updateSatLabel = (projPositions: ProjPos): void => {
     const { x: sx, y: sy } = satellite.getPosition();
-    const cRect = satCanvas.getBoundingClientRect();
-    const ratioX = satLogicalW > 0 ? cRect.width / satLogicalW : 1;
-    const ratioY = satLogicalH > 0 ? cRect.height / satLogicalH : 1;
-    const vx = cRect.left + sx * ratioX;
-    const vy = cRect.top + sy * ratioY;
-
-    let label = "";
-    let action: (() => void) | null = null;
     let best = Infinity;
+    let nearest: (typeof projPositions)[0] | null = null;
 
     for (const pp of projPositions) {
       const d = Math.sqrt((sx - pp.x) ** 2 + (sy - pp.y) ** 2);
       if (d < PROX_PX && d < best) {
         best = d;
-        label = pp.label;
-        action = pp.url ? () => window.open(pp.url, "_blank", "noopener,noreferrer") : null;
+        nearest = pp;
       }
     }
 
-    if (best === Infinity) {
-      const domTargets = [
-        { el: audioResumeBtn as HTMLElement, gate: audioGateEl as HTMLElement, text: "tap to receive signal", act: () => audioResumeBtn.click() },
-        { el: sayInput as HTMLElement, gate: null as HTMLElement | null, text: "say anything", act: () => sayInput.focus() },
-      ];
-      for (const t of domTargets) {
-        if (t.gate?.hidden) continue;
-        const r = t.el.getBoundingClientRect();
-        const d = Math.sqrt((vx - (r.left + r.width / 2)) ** 2 + (vy - (r.top + r.height / 2)) ** 2);
-        if (d < DOM_PROX_PX && d < best) {
-          best = d;
-          label = t.text;
-          action = t.act;
-        }
-      }
-    }
-
-    if (label) {
-      satTipLabelEl.textContent = label;
-      satTipAction = action;
-      satTipEl.style.left = `${vx}px`;
-      satTipEl.style.top = `${vy}px`;
-      satTipEl.hidden = false;
+    if (nearest) {
+      const proj = projectsFile.projects.find((p) => p.id === nearest!.id)!;
+      const anchor = starfield.getProjectLabelAnchor(proj);
+      projectLabelEl.textContent = nearest.label;
+      projectLabelEl.style.left = `${anchor.left}px`;
+      projectLabelEl.style.top = `${anchor.top - 6}px`;
+      projectLabelEl.hidden = false;
+      projectLabelEl.classList.add("project-hover-label--sat");
+      const url = nearest.url;
+      satStarAction = url ? () => window.open(url, "_blank", "noopener,noreferrer") : null;
     } else {
-      satTipEl.hidden = true;
-      satTipAction = null;
+      projectLabelEl.classList.remove("project-hover-label--sat");
+      satStarAction = null;
+      if (hoveredStar === null) {
+        projectLabelEl.hidden = true;
+      }
     }
   };
 
@@ -364,7 +346,7 @@ async function main(): Promise<void> {
     satellite.update(dt, keys, projPositions);
     satCtx.clearRect(0, 0, satLogicalW, satLogicalH);
     satellite.draw(satCtx);
-    updateSatTip(projPositions);
+    updateSatLabel(projPositions);
 
     requestAnimationFrame(loop);
   };

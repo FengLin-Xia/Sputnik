@@ -286,6 +286,12 @@ body {
   display: none;
 }
 
+.project-hover-label--sat {
+  pointer-events: auto;
+  cursor: pointer;
+  color: rgba(140, 210, 255, 0.72);
+}
+
 /* 固定在视口右下，叠在星空上；轮廓与恒星 hover 双框一致（starfield.ts strokeRect） */
 .receiver__bottom {
   position: fixed;

@@ -71,3 +71,21 @@ main.ts
 修改：web/src/styles.css（satellite canvas、sat-tip 样式）
 修改：web/public/config/projects.json（url 字段、新增 Rainbot / City-MARL）
 新增：0421.txt
+
+六、卫星调大 + tooltip 去重（补记）
+----------------------------------
+卫星尺寸（web/src/satellite.ts）
+- 天线：1×2 → 1×3，起点 y0-4 → y0-5
+- 机身：3×3 → 5×5，偏移 x0-1,y0-1 → x0-2,y0-2
+- 太阳能板：3×1 → 4×1，间距加宽（x0-6 / x0+3）
+- 背景光晕：13×13 → 17×15
+
+tooltip 去重（web/src/main.ts、web/src/styles.css、web/index.html）
+- 删除 #sat-tip / #sat-tip-label DOM 节点及全部 .sat-tip CSS。
+- 卫星邻近检测直接复用 #project-hover-label：命中时以 getProjectLabelAnchor 定位到恒星，
+  添加 .project-hover-label--sat 修饰类（pointer-events: auto; cursor: pointer; 偏蓝色调）；
+  离开时移除修饰类，若鼠标也未悬停则隐藏。
+- 新增 satStarAction 闭包 + projectLabelEl click 事件：--sat 状态下点击跳外链。
+- 鼠标 hover 逻辑：进入时移除 --sat、正常显示；mouseleave 时若 --sat 存在则不隐藏
+  （交由卫星帧循环维护可见性），避免闪烁。
+- 删除 DOM 元素邻近检测（say-anything / audio button），保持逻辑简洁。
