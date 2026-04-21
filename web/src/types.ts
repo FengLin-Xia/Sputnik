@@ -46,6 +46,7 @@ export type ProjectStar = {
   label: string;
   x: number;
   y: number;
+  url?: string;
 };
 
 export type ProjectsFile = {

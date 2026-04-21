@@ -1,7 +1,9 @@
 {
   "projects": [
-    { "id": "sputnik", "label": "Sputnik", "x": 0.78, "y": 0.22 },
-    { "id": "itclicks", "label": "ItClicks", "x": 0.18, "y": 0.64 },
-    { "id": "driftprobe", "label": "DriftProbe", "x": 0.84, "y": 0.71 }
+    { "id": "sputnik", "label": "Sputnik", "x": 0.78, "y": 0.22, "url": "https://github.com/FengLin-Xia/Sputnik" },
+    { "id": "itclicks", "label": "ItClicks", "x": 0.18, "y": 0.64, "url": "http://43.140.208.227/" },
+    { "id": "driftprobe", "label": "DriftProbe", "x": 0.84, "y": 0.71, "url": "https://github.com/FengLin-Xia/llm-driftprobe" },
+    { "id": "rainbot", "label": "Rainbot", "x": 0.42, "y": 0.35, "url": "https://github.com/FengLin-Xia/Rainbot" },
+    { "id": "city-marl", "label": "City-MARL", "x": 0.55, "y": 0.78, "url": "https://github.com/FengLin-Xia/City-MARL" }
   ]
 }

@@ -240,8 +240,8 @@ async function main(): Promise<void> {
   });
   canvas.addEventListener("click", (e) => {
     const hit = starfield.hitTest(e.clientX, e.clientY);
-    if (hit) {
-      console.info("[Sputnik] project star:", hit.id, hit.label);
+    if (hit?.url) {
+      window.open(hit.url, "_blank", "noopener,noreferrer");
     }
   });
 
