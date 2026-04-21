@@ -1,0 +1,73 @@
+Sputnik 改动记录 — 2026-04-21
+===============================
+
+一、项目恒星点击交互接通（web/src/main.ts、web/src/types.ts、web/public/config/projects.json）
+------------------------------------------------------------------------------------------
+- ProjectStar 类型（types.ts）新增可选字段 url?: string。
+- projects.json 为现有三颗恒星（Sputnik、ItClicks、DriftProbe）填入外链 URL；新增两颗：Rainbot、City-MARL。
+  - Sputnik     : https://github.com/FengLin-Xia/Sputnik
+  - ItClicks    : http://43.140.208.227/
+  - DriftProbe  : https://github.com/FengLin-Xia/llm-driftprobe
+  - Rainbot     : https://github.com/FengLin-Xia/Rainbot（坐标 0.42, 0.35）
+  - City-MARL   : https://github.com/FengLin-Xia/City-MARL（坐标 0.55, 0.78）
+- main.ts canvas click 事件：原仅 console.info，改为 hit?.url 时 window.open(_blank, noopener,noreferrer)。
+
+二、像素卫星（web/src/satellite.ts — 新文件）
+-------------------------------------------
+Satellite 类，全屏漫游像素卫星，亮蓝色，带拖尾。
+
+造型（约 9×6 逻辑像素，小于 projectstar 核心 11×11）：
+  - 天线：1×2 像素，坐标偏移 (0, -4)
+  - 机身：3×3 像素，rgba(90,180,255)
+  - 太阳能板：3×1 两侧，偏移 ±3
+  - 核心亮点：1×1，rgba(200,235,255,1.0)
+  - 背景光晕：13×13 rgba(70,150,255,0.07)
+
+拖尾：存最近 22 帧位置，frac²×0.55 透明度衰减，尺寸 1→2→3px；边界环绕时清空防止穿屏拖线。
+
+漫游逻辑：
+  - driftAngle 每 1.6~4.0 秒随机偏转 ±0.85π，以 DRIFT_SPEED=36px/s 匀速漂移。
+  - WASD 叠加推力 WASD_FORCE=58px/s，松开后漂移继续（非切换模式）。
+  - 靠近 projectstar（ORBIT_RADIUS=52px）施加切向力 ORBIT_FORCE=68，使卫星绕弧偏转而非穿越。
+  - 边界（margin 12px）环绕到对侧，同时清空拖尾。
+
+Keys 接口导出，供 main.ts 使用。
+
+三、卫星集成（web/src/main.ts、web/index.html、web/src/styles.css）
+-----------------------------------------------------------------
+index.html
+- receiver__sky 内，starfield canvas 之后插入 #satellite-canvas（aria-hidden）。
+- 同层插入 #sat-tip / #sat-tip-label，用于邻近提示框。
+
+styles.css
+- .receiver__satellite-canvas：position absolute，100% 覆盖，pointer-events none，z-index 10，pixelated 渲染。
+- .sat-tip：position fixed，z-index 55，pointer-events auto（可点击），transform translate(-50%, calc(-100% - 12px)) 使提示框居中显示于卫星上方；亮蓝边框，深色背景，hover 略提亮。
+
+main.ts
+- 新增 import Satellite, Keys from "./satellite"。
+- DOM 查询加入 #satellite-canvas、#sat-tip、#sat-tip-label，并纳入非空校验。
+- resizeSatCanvas()：DPR 处理与 starfield 一致，同时调用 satellite.resize(w, h)；绑定 window resize。
+- WASD keydown/keyup 监听（w/s/a/d 不区分大小写），映射到 Keys 对象。
+- updateSatTip(projPositions)：
+    · 将卫星逻辑坐标换算为视口坐标（cRect + ratio）。
+    · 先检测 projectstar（逻辑空间，阈值 PROX_PX=55），命中时提示 label，点击跳外链。
+    · 无 project 命中时检测 DOM 元素（视口空间，阈值 DOM_PROX_PX=70）：
+        - #receiver-audio-resume（仅 audioGateEl 非 hidden 时有效），点击触发 button.click()。
+        - #say-anything-input，点击触发 focus()。
+    · 命中则显示 sat-tip（fixed 定位在卫星上方），否则隐藏。
+- 动画 loop 引入 dt 计时（lastLoopTime，cap 0.05s）：每帧依次 starfield.frame → satellite.update → satCtx.clearRect + satellite.draw → updateSatTip。
+
+四、starfield.ts 扩展
+--------------------
+- 新增 public getProjectPositions()：返回所有 projectstar 的 { id, label, url?, x, y }（逻辑像素坐标），供 satellite.update 和 updateSatTip 共用；内部调用已有 private projectPixel()。
+
+五、相关文件变动汇总
+------------------
+新增：web/src/satellite.ts
+修改：web/src/types.ts（ProjectStar 加 url?）
+修改：web/src/starfield.ts（getProjectPositions）
+修改：web/src/main.ts（卫星集成、WASD、邻近提示）
+修改：web/index.html（satellite-canvas、sat-tip）
+修改：web/src/styles.css（satellite canvas、sat-tip 样式）
+修改：web/public/config/projects.json（url 字段、新增 Rainbot / City-MARL）
+新增：0421.txt

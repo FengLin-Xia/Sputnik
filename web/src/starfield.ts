@@ -111,6 +111,13 @@ export class Starfield {
     };
   }
 
+  getProjectPositions(): { id: string; label: string; x: number; y: number; url?: string }[] {
+    return this.projects.map((p) => {
+      const { x, y } = this.projectPixel(p);
+      return { id: p.id, label: p.label, url: p.url, x, y };
+    });
+  }
+
   hitTest(clientX: number, clientY: number): ProjectStar | null {
     const r = this.canvas.getBoundingClientRect();
     const lx = clientX - r.left;
