@@ -22,10 +22,14 @@ class OllamaProvider:
         model: str = "qwen2.5:7b",
         base_url: str | None = None,
         timeout: float = 120.0,
+        temperature: float = 0.25,
+        num_predict: int = 1600,
     ) -> None:
         self._model = model
         self._base = (base_url or _default_base_url()).rstrip("/")
         self._timeout = timeout
+        self._temperature = temperature
+        self._num_predict = num_predict
 
     def generate(self, messages: list[dict[str, str]]) -> str:
         url = f"{self._base}/api/chat"
@@ -33,6 +37,11 @@ class OllamaProvider:
             "model": self._model,
             "messages": messages,
             "stream": False,
+            "think": False,
+            "options": {
+                "temperature": self._temperature,
+                "num_predict": self._num_predict,
+            },
         }
         data = json.dumps(body).encode("utf-8")
         req = urllib.request.Request(

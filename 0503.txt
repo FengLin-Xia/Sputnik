@@ -1,0 +1,70 @@
+Sputnik change log - 2026-05-03
+================================
+
+1. Composition input expanded
+-----------------------------
+- Added lyric/text source support for composition prompts.
+- Added `--lyrics-file` to both:
+  - `python -m pipeline.run compose`
+  - `python -m pipeline.composition`
+- Lyrics are prompt context only. They are not written into `score.json`.
+- Added local lyric input file:
+  - `pipeline/composition/lyrics/across_the_universe.txt`
+
+2. Melody-focused validation
+----------------------------
+- Added `pipeline/composition/melody.py`.
+- Added composition-only melody sanity checks for `melody_mode=beacon`.
+- The check requires track 0 to behave more like a beacon melody:
+  - enough track 0 notes
+  - enough pitch variety
+  - enough pitch span
+  - limited static/relay crowding
+- Composer retry now feeds schema/melody validation errors back to the model.
+
+3. Provider work
+----------------
+- Ollama provider was adjusted for local qwen testing:
+  - disabled thinking where supported
+  - added generation limits
+- Added DeepSeek API provider:
+  - `pipeline/composition/providers/deepseek_provider.py`
+  - uses OpenAI-compatible `/chat/completions`
+  - reads `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL`
+  - supports local `.env` without adding a dependency
+- Added `.env.example`.
+- Updated `.gitignore` so `.env` stays ignored while `.env.example` can be committed.
+- Verified `.env` is ignored and not tracked.
+
+4. Skeleton / numbered-notation experiment
+------------------------------------------
+- Added numbered melody skeleton input:
+  - `pipeline/composition/skeletons/across_the_universe_numbered.txt`
+- The skeleton file now contains an approximate D-major numbered-notation melody skeleton.
+- Added experimental long-form renderer:
+  - `pipeline/composition/skeleton_experiment.py`
+- This script is separate from public score v0.1 because v0.1 only allows 4/8-bar segments.
+- It parses the numbered skeleton, keeps the melody as track 0, and generates a longer degraded sketch.
+
+5. Generated listening tests
+----------------------------
+- Generated DeepSeek-based score:
+  - `composition_output/score.json`
+- Rendered DeepSeek output:
+  - `composition_output/rendered_from_deepseek.wav`
+- Generated first two-minute skeleton degradation sketch:
+  - `composition_output/skeleton_degraded_2min.wav`
+- Generated layered two-minute skeleton degradation sketch:
+  - `composition_output/skeleton_degraded_layered_2min.wav`
+
+6. Current direction
+--------------------
+- Strong schema + lyrics alone did not produce a satisfying melodic result.
+- Current direction is to use numbered notation / melody skeleton as the musical backbone.
+- The model should later act more as a degradation or contamination controller, not the primary melody writer.
+- The skeleton experiment now adds more arrangement layers:
+  - continuous low drone layer
+  - periodic relay responses
+  - static/ghost contamination
+  - progressive melody degradation
+

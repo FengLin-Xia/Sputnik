@@ -10,6 +10,7 @@ from typing import Any
 
 from pipeline.render.schema import Score, score_from_dict
 
+from pipeline.composition.melody import validate_beacon_melody
 from pipeline.composition.prompt_builder import CompositionInput, build_messages
 from pipeline.composition.providers import TextProvider
 
@@ -88,17 +89,38 @@ def compose(
 ) -> ComposeResult:
     """Build prompt, call provider, parse JSON, validate; retry on failure."""
 
-    messages = build_messages(inp)
+    base_messages = build_messages(inp)
     last_err: Exception | None = None
     last_raw = ""
     for attempt in range(1, max_retries + 1):
+        messages = list(base_messages)
+        if last_err is not None:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        "Your previous output failed Sputnik score validation:\n"
+                        f"{last_err}\n\n"
+                        "Return a corrected complete JSON object only. Do not include any explanation.\n"
+                        "Every note must satisfy: d >= 0.25, d <= 4, p between 48 and 84, "
+                        "0 < v <= 1, track in 0..3, and t + d <= bars * 4.\n"
+                        "If a note violates the schema, rewrite or remove that note."
+                    ),
+                }
+            )
         try:
             last_raw = provider.generate(messages)
             data = parse_score_json(last_raw)
             score = score_from_dict(data)
+            if inp.melody_mode == "beacon":
+                validate_beacon_melody(score)
             return ComposeResult(score=score, raw_text=last_raw, attempts=attempt)
         except Exception as e:
-            last_err = e
+            preview = last_raw.strip().replace("\n", " ")[:240]
+            if preview:
+                last_err = ValueError(f"{e}; raw preview: {preview}")
+            else:
+                last_err = e
             continue
     raise ComposeError(
         f"Failed after {max_retries} attempt(s): {last_err}"

@@ -31,6 +31,8 @@ class CompositionInput:
     mode: str | None = "beacon"
     mood: str | None = "cold"
     signal: str | None = "stable"
+    lyrics_text: str | None = None
+    melody_mode: str = "beacon"
     extra_context: dict[str, Any] = field(default_factory=dict)
 
 
@@ -59,7 +61,8 @@ Your only job is to output ONE valid JSON object — the musical score — and n
 {_spec_block()}
 
 Aesthetic (light touch): sparse, cold, mechanical, broadcast-like; not a pop song; more like failed singing.
-Do not add explanations, markdown, code fences, or comments — only the raw JSON object."""
+Do not add explanations, reasoning, markdown, code fences, or comments — only the raw JSON object.
+/no_think"""
 
     lines = [
         "Style seeds (hints):",
@@ -73,6 +76,33 @@ Do not add explanations, markdown, code fences, or comments — only the raw JSO
             lines.append(f"- mood: {inp.mood}")
         if inp.signal:
             lines.append(f"- signal: {inp.signal}")
+    if inp.lyrics_text:
+        lyrics = inp.lyrics_text.strip()
+        if len(lyrics) > 3000:
+            lyrics = lyrics[:3000].rstrip() + "\n[truncated]"
+        lines.extend(
+            [
+                "Lyric source material:",
+                lyrics,
+                "",
+                "Use the lyric source only as emotional, rhythmic, and contour guidance.",
+                "Do not quote, paraphrase, or output any lyric text.",
+                "Translate the source into sparse note events only.",
+            ]
+        )
+    if inp.melody_mode == "beacon":
+        lines.extend(
+            [
+                "Melody requirements:",
+                "- Output a compact score: 10-16 notes total.",
+                "- Track 0 is the beacon melody and must carry a recognizable 4-7 note motif.",
+                "- Repeat or echo that motif at least once with small variation.",
+                "- Track 0 must use at least 4 notes, at least 3 distinct pitches, and a pitch span of 5-12 semitones.",
+                "- Keep track 0 mostly in a singable register, roughly pitch 55-74.",
+                "- Use tracks 1, 2, and 3 as sparse support only; do not let texture crowd the melody.",
+                "- Prefer simple stepwise motion with a few small leaps; avoid random isolated events.",
+            ]
+        )
     if inp.extra_context:
         lines.append(f"Extra keys (reserved for future drift): {inp.extra_context!r}")
 

@@ -43,6 +43,7 @@ def _cmd_package(args: argparse.Namespace) -> None:
 def _cmd_compose(args: argparse.Namespace) -> None:
     from pipeline.composition.composer import compose, write_score_json
     from pipeline.composition.prompt_builder import CompositionInput
+    from pipeline.composition.providers.deepseek_provider import DeepSeekProvider
     from pipeline.composition.providers.mock_provider import MockProvider
     from pipeline.composition.providers.ollama_provider import OllamaProvider
 
@@ -53,13 +54,21 @@ def _cmd_compose(args: argparse.Namespace) -> None:
         mode=args.mode,
         mood=args.mood,
         signal=args.signal,
+        lyrics_text=args.lyrics_file.read_text(encoding="utf-8") if args.lyrics_file else None,
+        melody_mode=args.melody_mode,
     )
     if args.provider == "mock":
         provider = MockProvider()
-    else:
+    elif args.provider == "ollama":
         provider = OllamaProvider(
-            model=args.model,
+            model=args.model or "qwen2.5:7b",
             base_url=args.ollama_url,
+            timeout=args.timeout,
+        )
+    else:
+        provider = DeepSeekProvider(
+            model=args.model,
+            base_url=args.deepseek_url,
             timeout=args.timeout,
         )
     out_path = args.out if args.out.is_absolute() else repo / args.out
@@ -117,11 +126,12 @@ def main() -> None:
     r.add_argument("--seed", type=int, default=42)
     r.set_defaults(func=_cmd_render)
 
-    c = sub.add_parser("compose", help="Composition v0.1 — score.json (mock or Ollama)")
+    c = sub.add_parser("compose", help="Composition v0.1 — score.json (mock, Ollama, or DeepSeek)")
     c.add_argument("--repo", type=Path, default=repo)
-    c.add_argument("--provider", choices=("mock", "ollama"), default="mock")
-    c.add_argument("--model", default="qwen2.5:7b")
+    c.add_argument("--provider", choices=("mock", "ollama", "deepseek"), default="mock")
+    c.add_argument("--model", default=None)
     c.add_argument("--ollama-url", default=os.environ.get("OLLAMA_BASE_URL"))
+    c.add_argument("--deepseek-url", default=os.environ.get("DEEPSEEK_BASE_URL"))
     c.add_argument("--timeout", type=float, default=120.0)
     c.add_argument(
         "--out",
@@ -133,6 +143,13 @@ def main() -> None:
     c.add_argument("--mode", default="beacon")
     c.add_argument("--mood", default="cold")
     c.add_argument("--signal", default="stable")
+    c.add_argument("--melody-mode", choices=("beacon", "off"), default="beacon")
+    c.add_argument(
+        "--lyrics-file",
+        type=Path,
+        default=None,
+        help="Optional lyric/text source file used as prompt context only",
+    )
     c.add_argument("--max-retries", type=int, default=3)
     c.set_defaults(func=_cmd_compose)
 
