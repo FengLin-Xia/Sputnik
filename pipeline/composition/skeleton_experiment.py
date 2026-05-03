@@ -115,6 +115,7 @@ def build_degraded_score(
     bpm: float,
     target_seconds: float,
     seed: int = 7,
+    visual_spread: bool = False,
 ) -> Score:
     import numpy as np
 
@@ -155,6 +156,10 @@ def build_degraded_score(
             t += d
             continue
 
+        phrase = int(t // 8.0)
+        phrase_pos = t % 8.0
+        phrase_role = phrase % 4
+
         drop_chance = 0.04 + 0.24 * progress
         ghost_chance = 0.08 + 0.18 * progress
         relay_chance = 0.06 + 0.16 * progress
@@ -164,8 +169,40 @@ def build_degraded_score(
         last_beacon_pitch = p
         v = max(0.16, 0.68 - 0.24 * progress + float(rng.normal(0.0, 0.04)))
 
-        if rng.random() > drop_chance:
-            notes.append(Note(t=round(t, 3), d=d, p=p, v=min(0.82, v), track=0))
+        weak_short = d <= 0.5 and (int(t * 2) % 2 == 1)
+        if visual_spread and weak_short and rng.random() < 0.38:
+            notes.append(Note(t=round(t, 3), d=0.25, p=_clamp_pitch(p + 12), v=0.1, track=2))
+            t += d
+            continue
+
+        if visual_spread:
+            if phrase_role == 0:
+                main_track = 0
+                main_pitch = p
+                main_v = min(0.8, v)
+            elif phrase_role == 1:
+                main_track = 3
+                main_pitch = _clamp_pitch(p + 7)
+                main_v = min(0.62, v * 0.72)
+            elif phrase_role == 2:
+                main_track = 1
+                main_pitch = _clamp_pitch(p - 12)
+                main_v = min(0.5, v * 0.58)
+                d = min(2.0, max(0.75, d * 1.5))
+            else:
+                main_track = 2
+                main_pitch = _clamp_pitch(p + int(rng.choice([-12, -5, 12, 19])))
+                main_v = min(0.42, v * 0.5)
+                d = 0.25
+
+            if phrase_pos >= 6.5 and phrase_role in (0, 1):
+                notes.append(Note(t=round(t + d, 3), d=0.25, p=_clamp_pitch(main_pitch + 7), v=0.18, track=3))
+
+            if rng.random() > drop_chance:
+                notes.append(Note(t=round(t, 3), d=d, p=main_pitch, v=main_v, track=main_track))
+        else:
+            if rng.random() > drop_chance:
+                notes.append(Note(t=round(t, 3), d=d, p=p, v=min(0.82, v), track=0))
 
         if rng.random() < ghost_chance:
             notes.append(Note(t=round(t + d * 0.5, 3), d=0.25, p=_clamp_pitch(p + 12), v=0.11, track=2))
@@ -192,10 +229,21 @@ def main() -> None:
     ap.add_argument("--seconds", type=float, default=120.0)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--sr", type=int, default=DEFAULT_SAMPLE_RATE)
+    ap.add_argument(
+        "--visual-spread",
+        action="store_true",
+        help="Distribute melody phrases across tracks/pitch bands for current starfield mapping",
+    )
     args = ap.parse_args()
 
     _key, bpm, events = load_skeleton(args.skeleton)
-    score = build_degraded_score(events, bpm=bpm, target_seconds=args.seconds, seed=args.seed)
+    score = build_degraded_score(
+        events,
+        bpm=bpm,
+        target_seconds=args.seconds,
+        seed=args.seed,
+        visual_spread=args.visual_spread,
+    )
     if args.score_out is not None:
         args.score_out.parent.mkdir(parents=True, exist_ok=True)
         payload = {

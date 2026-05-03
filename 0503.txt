@@ -68,3 +68,20 @@ Sputnik change log - 2026-05-03
   - static/ghost contamination
   - progressive melody degradation
 
+7. Visual-spread generation pass
+--------------------------------
+- Observed that the current frontend starfield maps track to horizontal bands and pitch to vertical position.
+- The long skeleton score concentrated many melody notes in track 0 and a narrow pitch range, causing flashes to cluster in the lower-left track band.
+- Added `--visual-spread` to `pipeline/composition/skeleton_experiment.py`.
+- In visual-spread mode, generation adapts to the current starfield mapping:
+  - phrases rotate across tracks 0, 3, 1, and 2
+  - track 1 receives lower, longer residue notes
+  - track 3 receives higher response phrases
+  - track 2 receives ghost/static fragments
+  - dense 0.5-beat melody runs are partially thinned or converted to ghost notes
+- Generated and broadcasted a new two-minute visual-spread sketch:
+  - `composition_output/skeleton_visual_spread_2min.wav`
+  - `composition_output/skeleton_visual_spread_2min_score.json`
+- Synced this version into:
+  - `broadcast/latest/`
+  - `web/public/broadcast/`
